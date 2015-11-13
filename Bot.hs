@@ -1,4 +1,11 @@
-module Bot where
+module Bot 
+( Command(..)
+, Special(..)
+, Bot(..)
+, connectBot
+, privmsg
+, action
+) where
 
 import Network
 import System.IO hiding (hPutStr, hPutStrLn)

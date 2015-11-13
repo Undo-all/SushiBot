@@ -1,7 +1,7 @@
 all: sushiBot
 
-sushiBot: SushiBot.hs Bot.hs 
-	ghc SushiBot.hs Bot.hs -o sushiBot -O2
+sushiBot: Main.hs Bot.hs 
+	ghc Main.hs Bot.hs -o sushiBot -O2
 
 .PHONY: clean
 clean:

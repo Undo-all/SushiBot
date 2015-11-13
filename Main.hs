@@ -1,3 +1,5 @@
+module Main (main) where
+
 import Bot 
 import Data.List
 import System.IO.UTF8 (hPutStr, hPutStrLn)
