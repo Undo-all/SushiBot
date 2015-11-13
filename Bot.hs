@@ -85,19 +85,24 @@ handleData s h b
           special     = find (($ s) . specialCond) (botSpecials b)
 
 eval [] _ _ b = privmsg b "I require a command."
-eval s n _ b  = let comms = botCommands b
-                    comm  = lookup (map toLower $ head s) $ 
-                            map (\c@(Command cn _ _ _) -> (cn,c)) comms
-                in maybe 
-                     (privmsg b $ "Command not found: " ++ head s)
-                     (\c -> if correctNumArgs (commandNumArgs c) (length (tail s))
-                              then commandFunc c (tail s) n b 
-                              else privmsg b $ 
-                                "Incorrect number of arguments to command " ++
-                                 commandName c ++ " (expected " ++ 
-                                 showNumArgs (commandNumArgs c) ++
-                                 ", got " ++ show (length $ tail s) ++ ")")
-                     comm
+eval s n _ b  =
+    let comms      = botCommands b
+        comm       = lookup (map toLower $ head s) $ 
+                     map (\c@(Command cn _ _ _) -> (cn,c)) comms
+        notFound s = privmsg b $ "Command not found: " ++ head s
+    in maybe (notFound s) respond comm
+  where respond c =
+          if correctNumArgs (commandNumArgs c) (length (tail s))
+            then commandFunc c (tail s) n b
+            else privmsg b $ concat 
+                   [ "Incorrect number of arguments to command "
+                   , commandName c
+                   , "(expected "
+                   , showNumArgs (commandNumArgs c)
+                   , ", got "
+                   , show $ length (tail s)
+                   ]
+                           
 
 correctNumArgs :: (Int, Maybe Int) -> Int -> Bool
 correctNumArgs (x, Nothing) n = n >= x
