@@ -75,7 +75,7 @@ handleData s h b
     | "MODE" `isInfixOf` s = send (botLogging b) h ("JOIN " ++ botChannel b ++ "\n")
     | "PRIVMSG" `isInfixOf` s && all isSpace (clean s) = return ()
     | isJust special = maybe (error "nope.") (\x -> specialFunc x (clean s) b) special
-    | isCommand s    = eval ((\(x:xs) -> tail x : xs) $ space $ words (clean s)) (username s) h b
+    | isCommand s    = eval ((\(x:xs) -> tail x : xs) $ space $ words (clean s)) (username s) b
     | otherwise      = return ()
     where isCommand m = "PRIVMSG" `isInfixOf` m &&
                         head (clean m) == '!'
@@ -84,8 +84,9 @@ handleData s h b
           username    = takeWhile (/='!') . tail
           special     = find (($ s) . specialCond) (botSpecials b)
 
-eval [] _ _ b = privmsg b "I require a command."
-eval s n _ b  =
+eval :: [String] -> String -> Bot -> IO ()
+eval [] _ b = privmsg b "I require a command."
+eval s n b  =
     let comms      = botCommands b
         comm       = lookup (map toLower $ head s) $ 
                      map (\c@(Command cn _ _ _) -> (cn,c)) comms
@@ -103,7 +104,6 @@ eval s n _ b  =
                    , show $ length (tail s)
                    ]
                            
-
 correctNumArgs :: (Int, Maybe Int) -> Int -> Bool
 correctNumArgs (x, Nothing) n = n >= x
 correctNumArgs (x, Just y) n  = n >= x && n <= y
