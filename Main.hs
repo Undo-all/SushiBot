@@ -9,11 +9,6 @@ import System.Random
 import Data.Maybe (fromMaybe)
 import qualified Data.Map as M
 
---specialJoin = Special (\s -> "MODE" `isInfixOf` s) (\_ b -> hPutStr (handle b) $ "JOIN " ++ botChannel b ++ "\n")  
-
--- "Temporarily" removed for being too annoying
-specialKonw = Special (\s -> "konw" `isInfixOf` (map toLower s)) (\_ b -> privmsg b "know*")
-
 commandInfo =
     Command
         "info"
@@ -176,5 +171,5 @@ main =
            , commandLewdBot 
            ]
 
-           [ specialKonw ]
+           []
 

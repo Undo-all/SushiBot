@@ -8,13 +8,13 @@ module Bot
 ) where
 
 import Network
-import System.IO hiding (hPutStr, hPutStrLn)
-import System.IO.UTF8 (hPutStr, hPutStrLn)
 import Data.List
-import Data.Maybe
-import Control.Monad (when)
 import Data.Char
+import Data.Maybe
 import Control.Concurrent
+import Control.Monad (when)
+import System.IO.UTF8 (hPutStr, hPutStrLn)
+import System.IO hiding (hPutStr, hPutStrLn)
 
 data Command = Command 
                { commandName :: String
@@ -71,11 +71,11 @@ botLoop h b = do s <- hGetLine h
 
 handleData :: String -> Handle -> Bot -> IO ()
 handleData s h b
-    | (take 4 s) == "PING" = send (botLogging b) h ("PONG " ++ (drop 4 s) ++ "\n")
-    | "MODE" `isInfixOf` s = send (botLogging b) h ("JOIN " ++ (botChannel b) ++ "\n")
+    | take 4 s == "PING" = send (botLogging b) h ("PONG " ++ drop 4 s ++ "\n")
+    | "MODE" `isInfixOf` s = send (botLogging b) h ("JOIN " ++ botChannel b ++ "\n")
     | "PRIVMSG" `isInfixOf` s && all isSpace (clean s) = return ()
     | isJust special = maybe (error "nope.") (\x -> specialFunc x (clean s) b) special
-    | isCommand s    = eval ((\(x:xs) -> (tail x) : xs) $ space $ words (clean s)) (username s) h b
+    | isCommand s    = eval ((\(x:xs) -> tail x : xs) $ space $ words (clean s)) (username s) h b
     | otherwise      = return ()
     where isCommand m = "PRIVMSG" `isInfixOf` m &&
                         head (clean m) == '!'
