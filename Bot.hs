@@ -71,9 +71,9 @@ botLoop h b = do s <- hGetLine h
 
 handleData :: String -> Handle -> Bot -> IO ()
 handleData s h b
-    | take 4 s == "PING" = send (botLogging b) h ("PONG " ++ drop 4 s ++ "\n")
-    | "MODE" `isInfixOf` s = send (botLogging b) h ("JOIN " ++ botChannel b ++ "\n")
-    | "PRIVMSG" `isInfixOf` s && all isSpace (clean s) = return ()
+    | isPing         = send (botLogging b) h ("PONG " ++ drop 4 s ++ "\n")
+    | isMode         = send (botLogging b) h ("JOIN " ++ botChannel b ++ "\n")
+    | isEmpty        = return ()
     | isJust special = maybe (error "nope.") (\x -> specialFunc x (clean s) b) special
     | isCommand s    = eval ((\(x:xs) -> tail x : xs) $ space $ words (clean s)) (username s) b
     | otherwise      = return ()
@@ -83,6 +83,9 @@ handleData s h b
           space       = map (map (\x -> if x == '_' then ' ' else x))
           username    = takeWhile (/='!') . tail
           special     = find (($ s) . specialCond) (botSpecials b)
+          isEmpty       = "PRIVMSG" `isInfixOf` s && all isSpace (clean s)
+          isMode        = "MODE" `isInfixOf` s
+          isPing        = "PING" `isInfixOf` s
 
 eval :: [String] -> String -> Bot -> IO ()
 eval [] _ b = privmsg b "I require a command."
