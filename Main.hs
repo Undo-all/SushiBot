@@ -14,6 +14,11 @@ import qualified Data.Map as M
 import qualified Data.Text as T
 import qualified Data.Text.IO as T (readFile)
 
+specialLove = 
+    Special
+        (\xs -> "i love you sushibot" `T.isInfixOf` T.filter (not . (`elem` ['.','!','?',',',';'])) (T.toLower xs))
+        (\_ b -> privmsg b "Coming from anyone else, that'd be flattering.")
+
 commandInfo =
     Command
         "info"
@@ -105,7 +110,7 @@ commandKill =
                                               \an IRC bot to kill yourself, \
                                               \I'm not too worried."
           kill [n] _ b = privmsg b $ T.concat 
-                           [ "If a shitty IRC bot coded in Haskell could kill " 
+                           [ "If a shitty IRC bot could kill " 
                            , n
                            , ", then someone would've already done it by now."
                            ]
@@ -130,11 +135,9 @@ commandSend =
     Command
         "send"
         "send several things, such as help, and nudes"
-        (1, Nothing)
+        (1, Just 1)
         commSend
-    where commSend ["help"] _ b = privmsg b "I would, but the only way I can help is by sending nudes and humorously rude responses."
-          commSend ["help", "to", _] _ b = privmsg b "I'm a bot, you lazy fuck, help the poor man yourself."
-          commSend ["nudes"] _ b = randomNude >>= privmsg b . T.pack
+    where commSend ["nudes"] _ b = randomNude >>= privmsg b . T.pack
           commSend [what] _ b 
               | what == "hugs" || what == "cuddles" = choice hugs >>= privmsg b
               where hugs = ["⊂((・▽・))⊃", "(>^_^)>", "<(^o^<)", "＼(^o^)／", "(oﾟ▽ﾟ)o"]
@@ -221,5 +224,5 @@ main =
            , commandLewdBot 
            ]
 
-           []
+           [ specialLove ]
 
