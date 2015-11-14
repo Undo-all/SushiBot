@@ -46,7 +46,8 @@ privmsg b s = hPutStr (botHandle b) $ "PRIVMSG " ++ botChannel b ++ " :" ++ s ++
 action :: Bot -> String -> IO ()
 action b s = hPutStr (botHandle b) $ "PRIVMSG " ++ botChannel b ++ " :\0001ACTION " ++ s ++ "\0001\n"
 
-connectBot :: String -> Int -> String -> String -> String -> Bool -> [Command] -> [Special] -> IO ()
+connectBot :: String -> Int -> String -> String -> String -> 
+              Bool -> [Command] -> [Special] -> IO ()
 connectBot server port nick name chan logging comms specs =
     do h <- connectTo server (PortNumber (fromIntegral port))
        hSetBuffering h NoBuffering

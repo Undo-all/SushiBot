@@ -75,7 +75,11 @@ commandKill =
                     bn = map toLower (botName b)
                     fuckYous = ["yourself", "self", "itself", "his self", "her self", "bot"]
           kill [n] u b
-            | u == n || n == "me" = privmsg b "I would link to a suicide hotline, but considering the fact that you're trying to use an IRC bot to kill yourself, I'm not too worried."
+            | u == n || n == "me" = privmsg b "I would link to a suicide \
+                                              \hotline, but considering the \
+                                              \fact that you're trying to use \
+                                              \an IRC bot to kill yourself, \
+                                              \I'm not too worried."
           kill [n] _ b = privmsg b $ "If a shitty IRC bot coded in Haskell could kill " ++ n ++ ", then someone would've already done it by now."
 
 commandFortune = 
