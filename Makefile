@@ -1,7 +1,7 @@
 all: sushiBot
 
 sushiBot: Main.hs Bot.hs 
-	ghc Main.hs Bot.hs -o sushiBot -O2
+	ghc Main.hs Bot.hs -o sushiBot -O2 -funfolding-use-threshold=16 -fexcess-precision -optc-O3 -optc-ffast-math
 
 .PHONY: clean
 clean:

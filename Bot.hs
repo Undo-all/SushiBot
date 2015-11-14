@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Bot 
 ( Command(..)
 , Special(..)
@@ -14,47 +16,48 @@ import Data.Maybe
 import Control.Concurrent
 import Control.Monad (when)
 import qualified Data.Map as M
-import System.IO.UTF8 (hPutStr, hPutStrLn)
-import System.IO hiding (hPutStr, hPutStrLn)
+import qualified Data.Text as T
+import Data.Text.IO (hPutStr, hPutStrLn, hGetLine)
+import System.IO hiding (hPutStr, hPutStrLn, hGetLine)
 
 data Command = Command 
-               { commandName :: String
-               , commandDesc :: String
+               { commandName :: T.Text
+               , commandDesc :: T.Text
                , commandNumArgs :: (Int, Maybe Int)
-               , commandFunc :: [String] -> String -> Bot -> IO ()
+               , commandFunc :: [T.Text] -> T.Text -> Bot -> IO ()
                }
 
 data Special = Special
-               { specialCond :: String -> Bool
-               , specialFunc :: String -> Bot -> IO ()
+               { specialCond :: T.Text -> Bool
+               , specialFunc :: T.Text -> Bot -> IO ()
                }  
 
 data Bot = Bot
-           { botServer :: String
+           { botServer :: T.Text
            , botPort :: Int
-           , botNick :: String
-           , botName :: String
-           , botChannel :: String
+           , botNick :: T.Text
+           , botName :: T.Text
+           , botChannel :: T.Text
            , botLogging :: Bool
-           , botCommands :: M.Map String Command
+           , botCommands :: M.Map T.Text Command
            , botSpecials :: [Special]
            , botHandle :: Handle
            }
 
-privmsg :: Bot -> String -> IO ()
-privmsg b s = hPutStr (botHandle b) $ "PRIVMSG " ++ botChannel b ++ " :" ++ s ++ "\n"
+privmsg :: Bot -> T.Text -> IO ()
+privmsg b s = hPutStr (botHandle b) $ T.concat ["PRIVMSG ", botChannel b, " :", s, "\n"]
 
-action :: Bot -> String -> IO ()
-action b s = hPutStr (botHandle b) $ "PRIVMSG " ++ botChannel b ++ " :\0001ACTION " ++ s ++ "\0001\n"
+action :: Bot -> T.Text -> IO ()
+action b s = hPutStr (botHandle b) $ T.concat ["PRIVMSG ", botChannel b, " :\0001ACTION ", s, "\0001\n"]
 
-connectBot :: String -> Int -> String -> String -> String -> 
+connectBot :: T.Text -> Int -> T.Text -> T.Text -> T.Text -> 
               Bool -> [Command] -> [Special] -> IO ()
 connectBot server port nick name chan logging comms specs =
-    do h <- connectTo server (PortNumber (fromIntegral port))
+    do h <- connectTo (T.unpack server) (PortNumber (fromIntegral port))
        hSetBuffering h NoBuffering
     
-       hPutStr h $ "USER " ++ nick ++ " " ++ nick ++ " " ++ nick ++ " :" ++ name ++ "\n"
-       hPutStr h $ "NICK " ++ nick ++ "\n"
+       hPutStr h $ T.concat ["USER ", nick, " ", nick, " ", nick, " :", name, "\n"]
+       hPutStr h $ T.concat ["NICK ", nick, "\n"]
 
        let commsMap = M.fromList $ map (\c@(Command n _ _ _) -> (n, c)) comms
            b        = Bot server port nick name chan logging commsMap specs h 
@@ -67,53 +70,53 @@ botLoop h b = do s <- hGetLine h
                  handleData s h b
                  botLoop h b
 
-handleData :: String -> Handle -> Bot -> IO ()
+handleData :: T.Text -> Handle -> Bot -> IO ()
 handleData s h b
-    | isPing         = hPutStr (botHandle b) ("PONG " ++ drop 4 s ++ "\n")
-    | isMode         = hPutStr (botHandle b) ("JOIN " ++ botChannel b ++ "\n")
+    | isPing         = hPutStr (botHandle b) (T.concat ["PONG ", T.drop 4 s, "\n"])
+    | isMode         = hPutStr (botHandle b) (T.concat ["JOIN ", botChannel b, "\n"])
     | isEmpty        = return ()
     | isJust special = maybe (error "nope.") (\x -> specialFunc x (clean s) b) special
-    | isCommand s    = eval ((\(x:xs) -> tail x : xs) $ space $ words (clean s)) (username s) b
+    | isCommand s    = eval ((\(x:xs) -> T.tail x : xs) $ space $ T.words (clean s)) (username s) b
     | otherwise      = return ()
-    where isCommand m = "PRIVMSG" `isInfixOf` m &&
-                        head (clean m) == '!'
-          clean       = tail . dropWhile (/= ':') . tail
-          space       = map (map (\x -> if x == '_' then ' ' else x))
-          username    = takeWhile (/='!') . tail
+    where isCommand m = "PRIVMSG" `T.isInfixOf` m &&
+                        T.head (clean m) == '!'
+          clean       = T.tail . T.dropWhile (/= ':') . T.tail
+          space       = map (T.map (\x -> if x == '_' then ' ' else x))
+          username    = T.takeWhile (/='!') . T.tail
           special     = find (($ s) . specialCond) (botSpecials b)
-          isEmpty       = "PRIVMSG" `isInfixOf` s && all isSpace (clean s)
-          isMode        = "MODE" `isInfixOf` s
-          isPing        = "PING" `isInfixOf` s
+          isEmpty     = "PRIVMSG" `T.isInfixOf` s && T.all isSpace (clean s)
+          isMode      = "MODE" `T.isInfixOf` s
+          isPing      = "PING" `T.isInfixOf` s
 
-eval :: [String] -> String -> Bot -> IO ()
+eval :: [T.Text] -> T.Text -> Bot -> IO ()
 eval [] _ b = privmsg b "I require a command."
 eval s n b  =
     let comms      = botCommands b
-        comm       = M.lookup (map toLower $ head s) (botCommands b)
+        comm       = M.lookup (T.map toLower $ head s) (botCommands b)
     in maybe notFound respond comm
-  where notFound  = privmsg b $ "Command not found: " ++ head s
+  where notFound = privmsg b $ "Command not found: " `T.append` head s
         respond c 
           | correctNumArgs (commandNumArgs c) (length (tail s)) = 
             commandFunc c (tail s) n b
           | otherwise                                           =
-            privmsg b $ concat 
+            privmsg b $ T.concat 
               [ "Incorrect number of arguments to command "
               , commandName c
               , "(expected "
               , showNumArgs (commandNumArgs c)
               , ", got "
-              , show $ length (tail s)
+              , T.pack . show . length $ tail s
               ]
                            
 correctNumArgs :: (Int, Maybe Int) -> Int -> Bool
 correctNumArgs (x, Nothing) n = n >= x
 correctNumArgs (x, Just y) n  = n >= x && n <= y
 
-showNumArgs :: (Int, Maybe Int) -> String
+showNumArgs :: (Int, Maybe Int) -> T.Text
 showNumArgs (0, Nothing) = "any number of arguments"
-showNumArgs (x, Nothing) = show x ++ " or more arguments"
+showNumArgs (x, Nothing) = T.pack (show x) `T.append` " or more arguments"
 showNumArgs (x, Just y)
-    | x /= y    = "any number of arguments between " ++ show x ++ " and " ++ show y
-    | otherwise = "exactly " ++ show x ++ " arguments"
+    | x /= y    = T.concat ["any number of arguments between ", T.pack (show x), " and ", T.pack (show y)]
+    | otherwise = T.concat ["exactly ", T.pack (show x), " arguments"]
           
                
