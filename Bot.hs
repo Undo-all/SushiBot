@@ -40,11 +40,6 @@ data Bot = Bot
            , botHandle :: Handle
            }
 
-send :: Bool -> Handle -> String -> IO ()
-send l h s = do
-    hPutStr h s
-    when l $ print s
-
 privmsg :: Bot -> String -> IO ()
 privmsg b s = hPutStr (botHandle b) $ "PRIVMSG " ++ botChannel b ++ " :" ++ s ++ "\n"
 
@@ -56,8 +51,8 @@ connectBot server port nick name chan logging comms specs =
     do h <- connectTo server (PortNumber (fromIntegral port))
        hSetBuffering h NoBuffering
     
-       send logging h $ "USER " ++ nick ++ " " ++ nick ++ " " ++ nick ++ " :" ++ name ++ "\n"
-       send logging h $ "NICK " ++ nick ++ "\n"
+       hPutStr h $ "USER " ++ nick ++ " " ++ nick ++ " " ++ nick ++ " :" ++ name ++ "\n"
+       hPutStr h $ "NICK " ++ nick ++ "\n"
 
        let b = Bot server port nick name chan logging comms specs h 
 
@@ -71,8 +66,8 @@ botLoop h b = do s <- hGetLine h
 
 handleData :: String -> Handle -> Bot -> IO ()
 handleData s h b
-    | isPing         = send (botLogging b) h ("PONG " ++ drop 4 s ++ "\n")
-    | isMode         = send (botLogging b) h ("JOIN " ++ botChannel b ++ "\n")
+    | isPing         = privmsg b ("PONG " ++ drop 4 s ++ "\n")
+    | isMode         = privmsg b ("JOIN " ++ botChannel b ++ "\n")
     | isEmpty        = return ()
     | isJust special = maybe (error "nope.") (\x -> specialFunc x (clean s) b) special
     | isCommand s    = eval ((\(x:xs) -> tail x : xs) $ space $ words (clean s)) (username s) b
@@ -93,9 +88,9 @@ eval s n b  =
     let comms      = botCommands b
         comm       = lookup (map toLower $ head s) $ 
                      map (\c@(Command cn _ _ _) -> (cn,c)) comms
-        notFound s = privmsg b $ "Command not found: " ++ head s
-    in maybe (notFound s) respond comm
-  where respond c =
+    in maybe notFound respond comm
+  where notFound  = privmsg b $ "Command not found: " ++ head s
+        respond c =
           if correctNumArgs (commandNumArgs c) (length (tail s))
             then commandFunc c (tail s) n b
             else privmsg b $ concat 
