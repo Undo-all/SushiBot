@@ -13,6 +13,7 @@ import Data.Char
 import Data.Maybe
 import Control.Concurrent
 import Control.Monad (when)
+import qualified Data.Map as M
 import System.IO.UTF8 (hPutStr, hPutStrLn)
 import System.IO hiding (hPutStr, hPutStrLn)
 
@@ -35,7 +36,7 @@ data Bot = Bot
            , botName :: String
            , botChannel :: String
            , botLogging :: Bool
-           , botCommands :: [Command]
+           , botCommands :: M.Map String Command
            , botSpecials :: [Special]
            , botHandle :: Handle
            }
@@ -55,7 +56,8 @@ connectBot server port nick name chan logging comms specs =
        hPutStr h $ "USER " ++ nick ++ " " ++ nick ++ " " ++ nick ++ " :" ++ name ++ "\n"
        hPutStr h $ "NICK " ++ nick ++ "\n"
 
-       let b = Bot server port nick name chan logging comms specs h 
+       let commsMap = M.fromList $ map (\c@(Command n _ _ _) -> (n, c)) comms
+           b        = Bot server port nick name chan logging commsMap specs h 
 
        botLoop h b
 
@@ -87,8 +89,7 @@ eval :: [String] -> String -> Bot -> IO ()
 eval [] _ b = privmsg b "I require a command."
 eval s n b  =
     let comms      = botCommands b
-        comm       = lookup (map toLower $ head s) $ 
-                     map (\c@(Command cn _ _ _) -> (cn,c)) comms
+        comm       = M.lookup (map toLower $ head s) (botCommands b)
     in maybe notFound respond comm
   where notFound  = privmsg b $ "Command not found: " ++ head s
         respond c 
