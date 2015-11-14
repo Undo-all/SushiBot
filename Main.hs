@@ -4,6 +4,7 @@ module Main (main) where
 
 import Bot 
 import Data.List
+import Text.HTML.Scalpel
 import System.IO.UTF8 (hPutStr, hPutStrLn)
 import System.Process (readProcess)
 import Data.Char (toLower)
@@ -129,16 +130,34 @@ commandSend =
     Command
         "send"
         "send several things, such as help, and nudes"
-        (1, Just 3)
+        (1, Nothing)
         commSend
     where commSend ["help"] _ b = privmsg b "I would, but the only way I can help is by sending nudes and humorously rude responses."
           commSend ["help", "to", _] _ b = privmsg b "I'm a bot, you lazy fuck, help the poor man yourself."
-          commSend ["nudes"] _ b = privmsg b "Nude-sending feature yet to be implemented."
+          commSend ["nudes"] _ b = randomNude >>= privmsg b . T.pack
           commSend [what] _ b 
               | what == "hugs" || what == "cuddles" = choice hugs >>= privmsg b
               where hugs = ["⊂((・▽・))⊃", "(>^_^)>", "<(^o^<)", "＼(^o^)／", "(oﾟ▽ﾟ)o"]
           commSend _ _ b = privmsg b "I'm unfortunately too stupid to know how to send that. Blame it on my retarded creator."
           choice l = fmap (l !!) (randomRIO (0, length l - 1))
+
+randomNude :: IO String
+randomNude = do
+    page <- fmap ((root++) . show) (randomRIO (0, 10000) :: IO Int)
+    xs <- scrapeURL page images
+    case xs of
+      Nothing -> error "Something in finding nudes has gone horribly wrong."
+      Just xs -> do img <- choice xs 
+                    return $ "http://gelbooru.com/" ++ img
+  where root :: String 
+        root =
+          "http://gelbooru.com/index.php?page=post&s=list\
+          \&tags=score%3A%3E%3D10+rating%3Aexplicit+&pid="
+        choice x = fmap (x !!) (randomRIO (0, length x - 1))
+        images = do
+            let link = do x <- attr ("href" :: String) $ ("a" :: String) @: []
+                          return x
+            chroots (("span" :: String) @: [hasClass ("thumb" :: String)]) link
 
 commandFlip =
     Command
