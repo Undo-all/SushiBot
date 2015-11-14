@@ -67,8 +67,8 @@ botLoop h b = do s <- hGetLine h
 
 handleData :: String -> Handle -> Bot -> IO ()
 handleData s h b
-    | isPing         = privmsg b ("PONG " ++ drop 4 s ++ "\n")
-    | isMode         = privmsg b ("JOIN " ++ botChannel b ++ "\n")
+    | isPing         = hPutStr (botHandle b) ("PONG " ++ drop 4 s ++ "\n")
+    | isMode         = hPutStr (botHandle b) ("JOIN " ++ botChannel b ++ "\n")
     | isEmpty        = return ()
     | isJust special = maybe (error "nope.") (\x -> specialFunc x (clean s) b) special
     | isCommand s    = eval ((\(x:xs) -> tail x : xs) $ space $ words (clean s)) (username s) b
@@ -91,17 +91,18 @@ eval s n b  =
                      map (\c@(Command cn _ _ _) -> (cn,c)) comms
     in maybe notFound respond comm
   where notFound  = privmsg b $ "Command not found: " ++ head s
-        respond c =
-          if correctNumArgs (commandNumArgs c) (length (tail s))
-            then commandFunc c (tail s) n b
-            else privmsg b $ concat 
-                   [ "Incorrect number of arguments to command "
-                   , commandName c
-                   , "(expected "
-                   , showNumArgs (commandNumArgs c)
-                   , ", got "
-                   , show $ length (tail s)
-                   ]
+        respond c 
+          | correctNumArgs (commandNumArgs c) (length (tail s)) = 
+            commandFunc c (tail s) n b
+          | otherwise                                           =
+            privmsg b $ concat 
+              [ "Incorrect number of arguments to command "
+              , commandName c
+              , "(expected "
+              , showNumArgs (commandNumArgs c)
+              , ", got "
+              , show $ length (tail s)
+              ]
                            
 correctNumArgs :: (Int, Maybe Int) -> Int -> Bool
 correctNumArgs (x, Nothing) n = n >= x
