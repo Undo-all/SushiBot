@@ -11,11 +11,13 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import System.Process (readProcess)
 
+specialLove :: Special
 specialLove = 
     Special
         (\xs -> "i love you sushibot" `T.isInfixOf` T.filter (not . (`elem` ['.','!','?',',',';'])) (T.toLower xs))
         (\_ b -> privmsg b "Coming from anyone else, that'd be flattering.")
 
+commandInfo :: Command
 commandInfo =
     Command
         "info"
@@ -25,6 +27,7 @@ commandInfo =
             privmsg b
                 "SushiBot is a bot written in Haskell, by the great almightly god-like being that is undoall. It's pretty shit.")
 
+commandHelp :: Command
 commandHelp =
     Command
         "help"
@@ -33,6 +36,7 @@ commandHelp =
         (\[] _ b -> 
             mapM_ (privmsg b . (\(Command n d _ _) -> T.concat [n, " - ", d])) (botCommands b))
 
+commandSource :: Command
 commandSource = 
     Command
         "source"
@@ -41,6 +45,7 @@ commandSource =
         (\[] _ b -> 
             privmsg b "The source code for SushiBot can be found at https://github.com/Undo-all/SushiBot")
 
+commandSlap :: Command
 commandSlap = 
     Command
         "slap"
@@ -49,6 +54,7 @@ commandSlap =
         (\[s] _ b ->
                 action b $ T.concat ["slaps ", s, " around a bit with a large trout."])
 
+commandMix :: Command
 commandMix = 
     Command
         "mix"
@@ -74,6 +80,7 @@ commandMix =
                                   , "."
                                   ]
 
+commandTime :: Command
 commandTime = 
     Command
         "time"
@@ -88,6 +95,7 @@ commandTime =
                                                   , " Dumbass."
                                                   ]))
 
+commandKill :: Command
 commandKill =
     Command
         "kill"
@@ -112,6 +120,7 @@ commandKill =
                            , ", then someone would've already done it by now."
                            ]
 
+commandFortune :: Command
 commandFortune = 
     Command
         "fortune"
@@ -119,6 +128,7 @@ commandFortune =
         (0, Just 0)
         (\[] _ b -> readProcess "fortune" [] [] >>= mapM_ (privmsg b . T.pack) . lines . init)
 
+commandLewd :: Command
 commandLewd =
     Command
         "lewd"
@@ -128,6 +138,7 @@ commandLewd =
     where lewd ["me"] u b = action b $ T.concat ["refuses to enter ", u, "'s magical realm"]
           lewd [n] _ b    = action b $ T.concat ["refuses to enter ", n, "'s magical realm"]
 
+commandSend :: Command
 commandSend =
     Command
         "send"
@@ -169,6 +180,7 @@ randomNude u = do
                           return x
             chroots (("span" :: String) @: [hasClass ("thumb" :: String)]) link
 
+commandFlip :: Command
 commandFlip =
     Command
         "flip"
@@ -176,6 +188,7 @@ commandFlip =
         (0, Just 0)
         (\[] _ b -> randomRIO (0, 1) >>= privmsg b . (T.append "Flipped ") . (["heads", "tails"] !!))
 
+sushis :: IO (M.Map T.Text [T.Text])
 sushis = fmap (parse M.empty . T.lines) file
     where file             = T.readFile "sushis.txt"
           parse m [""]     = m
@@ -183,6 +196,7 @@ sushis = fmap (parse M.empty . T.lines) file
           parse m (name:f) = parse (M.insert name sushi m) (dropWhile (/= T.empty) f)
               where sushi = takeWhile (/= T.empty) f
 
+commandMenu :: Command
 commandMenu = 
     Command
         "menu"
@@ -190,6 +204,7 @@ commandMenu =
         (0, Just 0)
         (\[] _ b -> sushis >>= privmsg b . T.intercalate ", " . M.keys)
 
+commandOrder :: Command
 commandOrder = 
     Command
         "order"
@@ -198,6 +213,7 @@ commandOrder =
         draw
     where draw [sushi] _ b = sushis >>= mapM_ (privmsg b) . fromMaybe ["I am not familiar with that kind of sushi."] . M.lookup sushi
 
+commandShoot :: Command
 commandShoot =
     Command
         "shoot"
@@ -205,6 +221,7 @@ commandShoot =
         (1, Just 1)
         (\[n] _ b -> action b $ "shoots " `T.append` n)
 
+commandLewdBot :: Command
 commandLewdBot = 
     Command
         "lewdbot"
@@ -212,6 +229,7 @@ commandLewdBot =
         (0, Nothing)
         (\_ _ b -> privmsg b "She's dead now :)")
 
+commandWeebMedia :: Command
 commandWeebMedia = 
     Command
         "weebmedia"
@@ -221,6 +239,7 @@ commandWeebMedia =
                       privmsg b $ T.append root n)
   where root = "http://www.animenewsnetwork.com/encyclopedia/anime.php?id="
 
+commandSuggest :: Command
 commandSuggest =
     Command
         "suggest"
@@ -230,6 +249,7 @@ commandSuggest =
   where suggest xs u b = do T.writeFile "suggestions.log" (T.concat [u, ": ", T.unwords xs, "\n"])
                             privmsg b "Suggestion added."
 
+main :: IO ()
 main = 
     connectBot "irc.sushigirl.tokyo" 6667 "SushiBot" "SushiBot" "#lounge" True
            [ commandInfo
