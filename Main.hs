@@ -134,19 +134,15 @@ commandSend =
         "send several things, such as help, and nudes"
         (1, Just 1)
         commSend
-    where commSend ["nudes"] u b
-              | u == "undoall" = randomNude False >>= privmsg b . T.pack
-              | otherwise      = randomNude True >>= privmsg b . T.pack
+    where commSend ["nudes"] u b = randomNude u >>= privmsg b . T.pack
           commSend [what] _ b 
               | what == "hugs" || what == "cuddles" = choice hugs >>= privmsg b
               where hugs = ["(>^_^)>", "<(^o^<)", "＼(^o^)／"]
           commSend _ _ b = privmsg b "I'm unfortunately too stupid to know how to send that. Blame it on my retarded creator."
           choice l = fmap (l !!) (randomRIO (0, length l - 1))
 
--- aod = afraid of dicks. Toggles if dicks/gay shit
--- will show up in result.
-randomNude :: Bool -> IO String
-randomNude aod = do
+randomNude :: T.Text -> IO String
+randomNude u = do
     page <- fmap ((root++) . show) (randomRIO (0, 10000) :: IO Int)
     xs <- scrapeURL page images
     case xs of
@@ -155,12 +151,18 @@ randomNude aod = do
                     return $ "http://gelbooru.com/" ++ img
   where root :: String 
         root
-          | aod =
+          | u == "team_malice" =
             "http://gelbooru.com/index.php?page=post&s=list\
-            \&tags=score%3A%3E%3D10+female+nude+solo+-gay+-futanari&pid="
-          | otherwise =
+            \&tags=score%3A%3E%3D10+female+nude+solo+touhou+-gay+-futanari&pid="
+          | u == "undoall" =
             "http://gelbooru.com/index.php?page=post&s=list\
             \&tags=score%3A%3E%3D10+rating%3Aexplicit+&pid="
+          | u == "steenuil" =
+            "http://gelbooru.com/index.php?page=post&s=list\
+            \&tags=score%3A%3E%3D10+futanari&pid=" 
+          | otherwise = 
+            "http://gelbooru.com/index.php?page=post&s=list\
+            \&tags=score%3A%3E%3D10+female+nude+-gay+-futanari&pid="
         choice x = fmap (x !!) (randomRIO (0, length x - 1))
         images = do
             let link = do x <- attr ("href" :: String) $ ("a" :: String) @: []
