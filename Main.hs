@@ -80,7 +80,6 @@ commandMix =
                                 , "."
                                 ]
 
-
 commandTime :: Command
 commandTime = 
   Command
@@ -189,9 +188,9 @@ commandFlip =
     (0, Just 0)
     (\[] _ b -> randomRIO (0, 1) >>= privmsg b . (T.append "Flipped ") . (["heads", "tails"] !!))
 
-sushis :: IO (M.Map T.Text [T.Text])
-sushis = fmap (parse M.empty . T.lines) file
-  where file             = T.readFile "sushis.txt"
+menu :: IO (M.Map T.Text [T.Text])
+menu = fmap (parse M.empty . T.lines) file
+  where file             = T.readFile "menu.txt"
         parse m [""]     = m
         parse m ("":f)   = parse m f
         parse m (name:f) = parse (M.insert name sushi m) (dropWhile (/= T.empty) f)
@@ -203,7 +202,7 @@ commandMenu =
     "menu"
     "list sushi available for order"
     (0, Just 0)
-    (\[] _ b -> sushis >>= privmsg b . T.intercalate ", " . M.keys)
+    (\[] _ b -> menu >>= privmsg b . T.intercalate ", " . M.keys)
 
 commandOrder :: Command
 commandOrder = 
@@ -212,7 +211,7 @@ commandOrder =
     "order a sushi off the menu"
     (1, Just 1)
     draw
-  where draw [sushi] _ b = sushis >>= mapM_ (privmsg b) . fromMaybe ["I am not familiar with that kind of sushi."] . M.lookup sushi
+  where draw [sushi] _ b = menu >>= mapM_ (privmsg b) . fromMaybe ["I am not familiar with that kind of sushi."] . M.lookup sushi
 
 commandShoot :: Command
 commandShoot =
