@@ -8,8 +8,8 @@ import Text.HTML.Scalpel
 import Data.Maybe (fromMaybe)
 import qualified Data.Map as M
 import qualified Data.Text as T
+import qualified Data.Text.IO as T
 import System.Process (readProcess)
-import qualified Data.Text.IO as T (readFile)
 
 specialLove = 
     Special
@@ -201,7 +201,24 @@ commandLewdBot =
         "RIP"
         (0, Nothing)
         (\_ _ b -> privmsg b "She's dead now :)")
-                        
+
+commandWeebMedia = 
+    Command
+        "weebmedia"
+        "get a random anime or manga off of ANN"
+        (0, Nothing)
+        (\_ _ b -> do n <- T.pack . show <$> (randomRIO (1, 17824) :: IO Int)
+                      privmsg b $ T.append root n)
+  where root = "http://www.animenewsnetwork.com/encyclopedia/anime.php?id="
+
+commandSuggest =
+    Command
+        "suggest"
+        "make a suggestion; it will be added to a suggestions file"
+        (0, Nothing)
+        suggest
+  where suggest xs u b = do T.writeFile "suggestions.log" (T.concat [u, ": ", T.concat xs, "\n"])
+                            privmsg b "Suggestion added."
 
 main = 
     connectBot "irc.sushigirl.tokyo" 6667 "SushiBot" "SushiBot" "#lounge" True
@@ -220,6 +237,8 @@ main =
            , commandOrder
            , commandShoot
            , commandLewdBot 
+           , commandWeebMedia
+           , commandSuggest
            ]
 
            [ specialLove ]
