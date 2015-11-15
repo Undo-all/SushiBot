@@ -101,10 +101,11 @@ eval s n b  =
             privmsg b $ T.concat 
               [ "Incorrect number of arguments to command "
               , commandName c
-              , "(expected "
+              , " (expected "
               , showNumArgs (commandNumArgs c)
               , ", got "
               , T.pack . show . length $ tail s
+              , ")"
               ]
                            
 correctNumArgs :: (Int, Maybe Int) -> Int -> Bool
@@ -116,6 +117,8 @@ showNumArgs (0, Nothing) = "any number of arguments"
 showNumArgs (x, Nothing) = T.pack (show x) `T.append` " or more arguments"
 showNumArgs (x, Just y)
     | x /= y    = T.concat ["any number of arguments between ", T.pack (show x), " and ", T.pack (show y)]
-    | otherwise = T.concat ["exactly ", T.pack (show x), " arguments"]
+    | otherwise = T.concat [ "exactly ", T.pack (show x)
+                           , if x == 1 then " argument" else "arguments" 
+                           ]
           
                
