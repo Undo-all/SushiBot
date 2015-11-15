@@ -10,15 +10,14 @@ module Bot
 ) where
 
 import Network
-import Data.List
 import Data.Char
+import Data.List
+import System.IO
 import Data.Maybe
-import Control.Concurrent
 import Control.Monad (when)
 import qualified Data.Map as M
 import qualified Data.Text as T
-import Data.Text.IO (hPutStr, hPutStrLn, hGetLine)
-import System.IO hiding (hPutStr, hPutStrLn, hGetLine)
+import qualified Data.Text.IO as T
 
 data Command = Command 
                { commandName :: T.Text
@@ -45,10 +44,10 @@ data Bot = Bot
            }
 
 privmsg :: Bot -> T.Text -> IO ()
-privmsg b s = hPutStr (botHandle b) $ T.concat ["PRIVMSG ", botChannel b, " :", s, "\n"]
+privmsg b s = T.hPutStr (botHandle b) $ T.concat ["PRIVMSG ", botChannel b, " :", s, "\n"]
 
 action :: Bot -> T.Text -> IO ()
-action b s = hPutStr (botHandle b) $ T.concat ["PRIVMSG ", botChannel b, " :\0001ACTION ", s, "\0001\n"]
+action b s = T.hPutStr (botHandle b) $ T.concat ["PRIVMSG ", botChannel b, " :\0001ACTION ", s, "\0001\n"]
 
 connectBot :: T.Text -> Int -> T.Text -> T.Text -> T.Text -> 
               Bool -> [Command] -> [Special] -> IO ()
@@ -56,8 +55,8 @@ connectBot server port nick name chan logging comms specs =
     do h <- connectTo (T.unpack server) (PortNumber (fromIntegral port))
        hSetBuffering h NoBuffering
     
-       hPutStr h $ T.concat ["USER ", nick, " ", nick, " ", nick, " :", name, "\n"]
-       hPutStr h $ T.concat ["NICK ", nick, "\n"]
+       T.hPutStr h $ T.concat ["USER ", nick, " ", nick, " ", nick, " :", name, "\n"]
+       T.hPutStr h $ T.concat ["NICK ", nick, "\n"]
 
        let commsMap = M.fromList $ map (\c@(Command n _ _ _) -> (n, c)) comms
            b        = Bot server port nick name chan logging commsMap specs h 
@@ -65,15 +64,15 @@ connectBot server port nick name chan logging comms specs =
        botLoop h b
 
 botLoop :: Handle -> Bot -> IO ()
-botLoop h b = do s <- hGetLine h
+botLoop h b = do s <- T.hGetLine h
                  when (botLogging b) $ print s 
                  handleData s h b
                  botLoop h b
 
 handleData :: T.Text -> Handle -> Bot -> IO ()
 handleData s h b
-    | isPing         = hPutStr (botHandle b) (T.concat ["PONG ", T.drop 4 s, "\n"])
-    | isMode         = hPutStr (botHandle b) (T.concat ["JOIN ", botChannel b, "\n"])
+    | isPing         = T.hPutStr (botHandle b) (T.concat ["PONG ", T.drop 4 s, "\n"])
+    | isMode         = T.hPutStr (botHandle b) (T.concat ["JOIN ", botChannel b, "\n"])
     | isEmpty        = return ()
     | isJust special = maybe (error "nope.") (\x -> specialFunc x (clean s) b) special
     | isCommand s    = eval ((\(x:xs) -> T.tail x : xs) $ space $ T.words (clean s)) (username s) b

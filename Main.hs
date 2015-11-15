@@ -3,15 +3,12 @@
 module Main (main) where
 
 import Bot 
-import Data.List
-import Text.HTML.Scalpel
-import System.IO.UTF8 (hPutStr, hPutStrLn)
-import System.Process (readProcess)
-import Data.Char (toLower)
 import System.Random
+import Text.HTML.Scalpel
 import Data.Maybe (fromMaybe)
 import qualified Data.Map as M
 import qualified Data.Text as T
+import System.Process (readProcess)
 import qualified Data.Text.IO as T (readFile)
 
 specialLove = 
@@ -100,8 +97,8 @@ commandKill =
     where kill [n] _ b 
               | ln == bn || ln `elem` fuckYous = 
                     privmsg b "Fuck you too, buddy."
-              where ln = T.map toLower n
-                    bn = T.map toLower (botName b)
+              where ln = T.toLower n
+                    bn = T.toLower (botName b)
                     fuckYous = ["yourself", "self", "itself", "his self", "her self", "bot"]
           kill [n] u b
             | u == n || n == "me" = privmsg b "I would link to a suicide \
@@ -204,6 +201,7 @@ commandLewdBot =
         "RIP"
         (0, Nothing)
         (\_ _ b -> privmsg b "She's dead now :)")
+                        
 
 main = 
     connectBot "irc.sushigirl.tokyo" 6667 "SushiBot" "SushiBot" "#lounge" True
