@@ -3,8 +3,10 @@
 module Main (main) where
 
 import Bot 
+import Data.Char
 import System.Random
 import Text.HTML.Scalpel
+import Database.SQLite.Simple
 import Data.Maybe (fromMaybe)
 import qualified Data.Map as M
 import qualified Data.Text as T
@@ -154,10 +156,12 @@ commandSend =
 
 randomNude :: T.Text -> IO String
 randomNude u = do
-    page <- fmap ((root++) . show) (randomRIO (0, 10000) :: IO Int)
+    np <- fromMaybe 0 <$> scrapeURL (root ++ "0") numPages
+    let n = if np `div` 42 > 50 then 50 * 42 else np
+    page <- fmap ((root++) . show) (randomRIO (0, n) :: IO Int)
     xs <- scrapeURL page images
     case xs of
-      Nothing -> error "Something in finding nudes has gone horribly wrong."
+      Nothing -> return "There aren't any images with your preferances."
       Just xs -> do img <- choice xs 
                     return $ "http://gelbooru.com/" ++ img
   where root :: String 
@@ -167,17 +171,26 @@ randomNude u = do
               \&tags=score%3A%3E%3D10+female+nude+solo+touhou+-gay+-futanari&pid="
             | u == "undoall" =
               "http://gelbooru.com/index.php?page=post&s=list\
-              \&tags=score%3A%3E%3D10+rating%3Aexplicit+&pid="
+              \&tags=post_orgasm_torture&pid="
             | u == "steenuil" =
               "http://gelbooru.com/index.php?page=post&s=list\
               \&tags=score%3A%3E%3D10+futanari&pid=" 
+            | u == "Ni-chan" =
+              "http://gelbooru.com/index.php?page=post&s=list\
+              \&tags=guro&pid="
+            | u == "itamae" || u == "itamae-fone" || u == "itamae-ssh" =
+              "http://gelbooru.com/index.php?page=post&s=list\
+              \&tags=feet+female+-futanari+-gay&pid=" 
             | otherwise = 
               "http://gelbooru.com/index.php?page=post&s=list\
               \&tags=score%3A%3E%3D10+female+nude+-gay+-futanari&pid="
         choice x = fmap (x !!) (randomRIO (0, length x - 1))
+        numPages = do
+            x <- attr ("href" :: String) $ ("a" :: String) @: [("alt" :: String) @= "last page"]
+            let n = reverse . takeWhile isDigit . reverse $ x
+            return (read n :: Int)
         images = do
-            let link = do x <- attr ("href" :: String) $ ("a" :: String) @: []
-                          return x
+            let link = attr ("href" :: String) $ ("a" :: String) @: []
             chroots (("span" :: String) @: [hasClass ("thumb" :: String)]) link
 
 commandFlip :: Command
@@ -239,16 +252,6 @@ commandWeebMedia =
                   privmsg b $ T.append root n)
   where root = "http://www.animenewsnetwork.com/encyclopedia/anime.php?id="
 
-commandSuggest :: Command
-commandSuggest =
-  Command
-    "suggest"
-    "make a suggestion; it will be added to a suggestions file"
-    (0, Nothing)
-    suggest
-  where suggest xs u b = do T.writeFile "suggestions.log" (T.concat [u, ": ", T.unwords xs, "\n"])
-                            privmsg b "Suggestion added."
-
 main :: IO ()
 main = 
   connectBot "irc.sushigirl.tokyo" 6667 "SushiBot" "SushiBot" "#lounge" True
@@ -268,7 +271,6 @@ main =
     , commandShoot
     , commandLewdBot 
     , commandWeebMedia
-    , commandSuggest
     ]
 
     [ specialLove ]
