@@ -44,18 +44,24 @@ data Bot = Bot
            }
 
 privmsg :: Bot -> T.Text -> IO ()
-privmsg b s = T.hPutStr (botHandle b) $ T.concat ["PRIVMSG ", botChannel b, " :", s, "\n"]
+privmsg b s = T.hPutStr (botHandle b) $ 
+              T.concat ["PRIVMSG ", botChannel b, " :", s, "\n"]
 
 action :: Bot -> T.Text -> IO ()
-action b s = T.hPutStr (botHandle b) $ T.concat ["PRIVMSG ", botChannel b, " :\0001ACTION ", s, "\0001\n"]
+action b s = T.hPutStr (botHandle b) $ T.concat [ "PRIVMSG "
+                                                , botChannel b
+                                                , " :\0001ACTION "
+                                                , s, "\0001\n"
+                                                ]
 
 connectBot :: T.Text -> Int -> T.Text -> T.Text -> T.Text -> 
               Bool -> [Command] -> [Special] -> IO ()
 connectBot server port nick name chan logging comms specs =
     do h <- connectTo (T.unpack server) (PortNumber (fromIntegral port))
        hSetBuffering h NoBuffering
-    
-       T.hPutStr h $ T.concat ["USER ", nick, " ", nick, " ", nick, " :", name, "\n"]
+
+       T.hPutStr h $ T.concat [ "USER ", nick, " ", nick
+                            , " ", nick, " :", name, "\n" ]
        T.hPutStr h $ T.concat ["NICK ", nick, "\n"]
 
        let commsMap = M.fromList $ map (\c@(Command n _ _ _) -> (n, c)) comms
@@ -64,10 +70,11 @@ connectBot server port nick name chan logging comms specs =
        botLoop h b
 
 botLoop :: Handle -> Bot -> IO ()
-botLoop h b = do s <- T.hGetLine h
-                 when (botLogging b) $ print s 
-                 handleData s h b
-                 botLoop h b
+botLoop h b = do
+    s <- T.hGetLine h
+    when (botLogging b) $ print s 
+    handleData s h b
+    botLoop h b
 
 handleData :: T.Text -> Handle -> Bot -> IO ()
 handleData s h b
@@ -77,15 +84,15 @@ handleData s h b
     | isJust special = maybe (error "nope.") (\x -> specialFunc x (clean s) b) special
     | isCommand s    = eval ((\(x:xs) -> T.tail x : xs) $ space $ T.words (clean s)) (username s) b
     | otherwise      = return ()
-    where isCommand m = "PRIVMSG" `T.isInfixOf` m &&
-                        T.head (clean m) == '!'
-          clean       = T.tail . T.dropWhile (/= ':') . T.tail
-          space       = map (T.map (\x -> if x == '_' then ' ' else x))
-          username    = T.takeWhile (/='!') . T.tail
-          special     = find (($ s) . specialCond) (botSpecials b)
-          isEmpty     = "PRIVMSG" `T.isInfixOf` s && T.all isSpace (clean s)
-          isMode      = "MODE" `T.isInfixOf` s
-          isPing      = "PING" `T.isInfixOf` s
+  where isCommand m = "PRIVMSG" `T.isInfixOf` m &&
+                      T.head (clean m) == '!'
+        clean       = T.tail . T.dropWhile (/= ':') . T.tail
+        space       = map (T.map (\x -> if x == '_' then ' ' else x))
+        username    = T.takeWhile (/='!') . T.tail
+        special     = find (($ s) . specialCond) (botSpecials b)
+        isEmpty     = "PRIVMSG" `T.isInfixOf` s && T.all isSpace (clean s)
+        isMode      = "MODE" `T.isInfixOf` s
+        isPing      = "PING" `T.isInfixOf` s
 
 eval :: [T.Text] -> T.Text -> Bot -> IO ()
 eval [] _ b = privmsg b "I require a command."
@@ -118,7 +125,6 @@ showNumArgs (x, Nothing) = T.pack (show x) `T.append` " or more arguments"
 showNumArgs (x, Just y)
     | x /= y    = T.concat ["any number of arguments between ", T.pack (show x), " and ", T.pack (show y)]
     | otherwise = T.concat [ "exactly ", T.pack (show x)
-                           , if x == 1 then " argument" else "arguments" 
-                           ]
+                           , if x == 1 then " argument" else "arguments" ]
           
               
