@@ -137,7 +137,7 @@ commandSend =
     where commSend ["nudes"] _ b = randomNude >>= privmsg b . T.pack
           commSend [what] _ b 
               | what == "hugs" || what == "cuddles" = choice hugs >>= privmsg b
-              where hugs = ["⊂((・▽・))⊃", "(>^_^)>", "<(^o^<)", "＼(^o^)／", "(oﾟ▽ﾟ)o"]
+              where hugs = ["(>^_^)>", "<(^o^<)", "＼(^o^)／"]
           commSend _ _ b = privmsg b "I'm unfortunately too stupid to know how to send that. Blame it on my retarded creator."
           choice l = fmap (l !!) (randomRIO (0, length l - 1))
 
@@ -217,7 +217,7 @@ commandSuggest =
         "make a suggestion; it will be added to a suggestions file"
         (0, Nothing)
         suggest
-  where suggest xs u b = do T.writeFile "suggestions.log" (T.concat [u, ": ", T.concat xs, "\n"])
+  where suggest xs u b = do T.writeFile "suggestions.log" (T.concat [u, ": ", T.unwords xs, "\n"])
                             privmsg b "Suggestion added."
 
 main = 
