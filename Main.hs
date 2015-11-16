@@ -5,8 +5,8 @@ module Main (main) where
 import Bot 
 import Data.Char
 import System.Random
+import System.Directory
 import Text.HTML.Scalpel
-import Database.SQLite.Simple
 import Data.Maybe (fromMaybe)
 import qualified Data.Map as M
 import qualified Data.Text as T
@@ -171,7 +171,7 @@ randomNude u = do
               \&tags=score%3A%3E%3D10+female+nude+solo+touhou+-gay+-futanari&pid="
             | u == "undoall" =
               "http://gelbooru.com/index.php?page=post&s=list\
-              \&tags=post_orgasm_torture&pid="
+              \&tags=score%3a%3E%3d10+rating%3aexplicit&pid="
             | u == "steenuil" =
               "http://gelbooru.com/index.php?page=post&s=list\
               \&tags=score%3A%3E%3D10+futanari&pid=" 
@@ -180,7 +180,10 @@ randomNude u = do
               \&tags=guro&pid="
             | u == "itamae" || u == "itamae-fone" || u == "itamae-ssh" =
               "http://gelbooru.com/index.php?page=post&s=list\
-              \&tags=feet+female+-futanari+-gay&pid=" 
+              \&tags=score%3A%3E%3D10+feet+female+-futanari+-gay&pid=" 
+            | u == "invoker" || u == "shiina-san" =
+              "http://gelbooru.com/index.php?page=post&s=list\
+              \&tags=score%3A%3E%3D8+female+-yaoi+-gay&pid="
             | otherwise = 
               "http://gelbooru.com/index.php?page=post&s=list\
               \&tags=score%3A%3E%3D10+female+nude+-gay+-futanari&pid="
