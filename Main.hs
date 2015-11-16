@@ -171,7 +171,7 @@ randomNude u = do
               \&tags=score%3A%3E%3D10+female+nude+solo+touhou+-gay+-futanari&pid="
             | u == "undoall" =
               "http://gelbooru.com/index.php?page=post&s=list\
-              \&tags=score%3a%3E%3d10+rating%3aexplicit&pid="
+              \&tags=score%3a%3E%3d10+rating%3aexplicit+bondage&pid="
             | u == "steenuil" =
               "http://gelbooru.com/index.php?page=post&s=list\
               \&tags=score%3A%3E%3D10+futanari&pid=" 
