@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, MultiWayIf #-}
 
 module Main (main) where
 
@@ -8,6 +8,7 @@ import System.Random
 import System.Directory
 import Text.HTML.Scalpel
 import Data.Maybe (fromMaybe)
+import Database.SQLite.Simple
 import qualified Data.Map as M
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
@@ -156,37 +157,29 @@ commandSend =
 
 randomNude :: T.Text -> IO String
 randomNude u = do
-    np <- fromMaybe 0 <$> scrapeURL (root ++ "0") numPages
+    pageOne <- fmap (++"0") root
+    np      <- fromMaybe 0 <$> scrapeURL pageOne numPages
     let n = if np `div` 42 > 50 then 50 * 42 else np
-    page <- fmap ((root++) . show) (randomRIO (0, n) :: IO Int)
-    xs <- scrapeURL page images
+    pageNum <- randomRIO (0, n) :: IO Int
+    page    <- fmap (++(show n)) root
+    xs      <- scrapeURL page images
     case xs of
       Nothing -> return "There aren't any images with your preferances."
-      Just xs -> do img <- choice xs 
-                    return $ "http://gelbooru.com/" ++ img
-  where root :: String 
-        root
-            | u == "team_malice" =
-              "http://gelbooru.com/index.php?page=post&s=list\
-              \&tags=score%3A%3E%3D10+female+nude+solo+touhou+-gay+-futanari&pid="
-            | u == "undoall" =
-              "http://gelbooru.com/index.php?page=post&s=list\
-              \&tags=score%3a%3E%3d10+rating%3aexplicit+futanari+rape&pid="
-            | u == "steenuil" =
-              "http://gelbooru.com/index.php?page=post&s=list\
-              \&tags=score%3A%3E%3D10+futanari&pid=" 
-            | u == "Ni-chan" =
-              "http://gelbooru.com/index.php?page=post&s=list\
-              \&tags=guro&pid="
-            | u == "itamae" || u == "itamae-fone" || u == "itamae-ssh" =
-              "http://gelbooru.com/index.php?page=post&s=list\
-              \&tags=score%3A%3E%3D10+feet+female+-futanari+-gay&pid=" 
-            | u == "invoker" || u == "shiina-san" =
-              "http://gelbooru.com/index.php?page=post&s=list\
-              \&tags=score%3A%3E%3D8+female+-yaoi+-gay&pid="
-            | otherwise = 
-              "http://gelbooru.com/index.php?page=post&s=list\
-              \&tags=score%3A%3E%3D10+female+nude+-gay+-futanari&pid="
+      Just xs -> do if length xs == 0
+                      then return "There aren't any images with your preferences."
+                      else do img <- choice xs 
+                              return $ "http://gelbooru.com/" ++ img
+  where root :: IO String 
+        root = do let gel :: String
+                      gel = "http://gelbooru.com/index.php?page=post&s=list\
+                            \&tags=rating%3aexplicit"
+                  fileExists <- doesFileExist ("sexprefs/" ++ T.unpack u)
+                  if | not fileExists -> return $ gel ++ "&pid="
+                     | otherwise      -> do
+                       xs <- T.lines <$> T.readFile ("sexprefs/" ++ T.unpack u)
+                       if length xs > 0 
+                         then return $ gel ++ "+" ++ T.unpack (T.intercalate "+" xs) ++ "&pid="
+                         else return $ gel ++ "&pid="
         choice x = fmap (x !!) (randomRIO (0, length x - 1))
         numPages = do
             x <- attr ("href" :: String) $ ("a" :: String) @: [("alt" :: String) @= "last page"]
@@ -195,6 +188,42 @@ randomNude u = do
         images = do
             let link = attr ("href" :: String) $ ("a" :: String) @: []
             chroots (("span" :: String) @: [hasClass ("thumb" :: String)]) link
+
+commandSexPrefs :: Command
+commandSexPrefs = 
+  Command
+    "sexprefs"
+    "add or remove sexual preferences; your sexual preferences will be used to get the best nudes with !send nudes"
+    (1, Nothing)
+    sexprefs
+  where sexprefs ("add":xs) u b = do
+            createDirectoryIfMissing False "sexprefs"
+            T.appendFile ("sexprefs/" ++ T.unpack u) (T.unlines xs)
+            privmsg b "Preferences updated."
+        sexprefs ("remove":xs) u b = do
+            fileExists <- doesFileExist ("sexprefs/" ++ T.unpack u)
+            if | not fileExists -> privmsg b "Preferences updated."
+               | otherwise      -> do 
+                     prefs <- T.lines <$> T.readFile ("sexprefs/" ++ T.unpack u)
+                     let new = filter (not . (`elem` xs)) prefs
+                     T.writeFile ("sexprefs/" ++ T.unpack u) (T.unlines new)
+                     privmsg b "Preferences updated."
+        sexprefs ["clear"] u b = do
+            fileExists <- doesFileExist ("sexprefs/" ++ T.unpack u)
+            if | not fileExists -> privmsg b "Preferences cleared."
+               | otherwise      -> do
+                   removeFile ("sexprefs/" ++ T.unpack u)
+                   privmsg b "Preferences cleared."
+        sexprefs ["list"] u b = do
+            fileExists <- doesFileExist ("sexprefs/" ++ T.unpack u)
+            if | not fileExists -> privmsg b "You have no preferences at this time."
+               | otherwise      -> do
+                   xs <- T.lines <$> T.readFile ("sexprefs/" ++ T.unpack u)
+                   if length xs > 0
+                     then privmsg b (T.intercalate ", " xs)
+                     else privmsg b "You have no preferences at this time."
+        sexprefs _ _ b =
+          privmsg b "syntax: sexprefs (add <tags> | remove <tags> | clear | list"
 
 commandFlip :: Command
 commandFlip =
@@ -286,7 +315,7 @@ command8ball =
 
 main :: IO ()
 main = 
-  connectBot "irc.sushigirl.tokyo" 6667 "SushiBot" "SushiBot" "#lounge" True
+  connectBot "irc.sushigirl.tokyo" 6667 "SushiBot" "SushiBot" "#lounge" False
     [ commandInfo
     , commandHelp
     , commandSlap
@@ -297,6 +326,7 @@ main =
     , commandSource
     , commandLewd
     , commandSend
+    , commandSexPrefs
     , commandFlip
     , commandMenu
     , commandOrder
