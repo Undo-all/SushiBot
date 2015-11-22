@@ -171,7 +171,7 @@ randomNude u = do
               \&tags=score%3A%3E%3D10+female+nude+solo+touhou+-gay+-futanari&pid="
             | u == "undoall" =
               "http://gelbooru.com/index.php?page=post&s=list\
-              \&tags=score%3a%3E%3d10+rating%3aexplicit+bondage&pid="
+              \&tags=score%3a%3E%3d10+rating%3aexplicit+futanari+rape&pid="
             | u == "steenuil" =
               "http://gelbooru.com/index.php?page=post&s=list\
               \&tags=score%3A%3E%3D10+futanari&pid=" 
@@ -250,10 +250,39 @@ commandWeebMedia =
   Command
     "weebmedia"
     "get a random anime or manga off of ANN"
-    (0, Nothing)
+    (0, Just 0)
     (\_ _ b -> do n <- T.pack . show <$> (randomRIO (1, 17824) :: IO Int)
                   privmsg b $ T.append root n)
   where root = "http://www.animenewsnetwork.com/encyclopedia/anime.php?id="
+
+command8ball :: Command
+command8ball =
+  Command
+    "8ball"
+    "ask the 8ball a question and get a wise (random) answer"
+    (0, Nothing)
+    (\_ _ b -> fmap (responses !!) (randomRIO (0, 19)) >>= privmsg b)
+  where responses = [ "It is certain."
+                    , "It is decidedly so."
+                    , "Without a doubt."
+                    , "Yes, definitely."
+                    , "You may rely on it."
+                    , "As I see it, yes."
+                    , "Most likely."
+                    , "Outlook good."
+                    , "Yes."
+                    , "Signs point to yes."
+                    , "Reply hazy, try again."
+                    , "Ask again later."
+                    , "Better not tell you now..."
+                    , "Cannot predict now."
+                    , "Concentrate and ask again."
+                    , "Don't count on it."
+                    , "My reply is no."
+                    , "My soruces say no."
+                    , "Outlook not so good."
+                    , "Very doubtful."
+                    ]
 
 main :: IO ()
 main = 
@@ -274,6 +303,7 @@ main =
     , commandShoot
     , commandLewdBot 
     , commandWeebMedia
+    , command8ball
     ]
 
     [ specialLove ]
