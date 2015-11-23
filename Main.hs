@@ -13,6 +13,7 @@ import Data.Maybe (fromMaybe)
 import Database.SQLite.Simple
 import qualified Data.Map as M
 import qualified Data.Text as T
+import Control.Concurrent (forkIO)
 import qualified Data.Text.IO as T
 import System.Process (readProcess)
 
@@ -40,7 +41,8 @@ commandHelp =
     (0, Just 0)
     (\[] u b -> do
         privmsg b "List of commands sent in a PM."
-        mapM_ (userMsg b u . (\(Command n d _ _) -> T.concat [n, " - ", d])) (M.elems $ botCommands b))
+        forkIO $ mapM_ (userMsg b u . (\(Command n d _ _) -> T.concat [n, " - ", d])) (M.elems $ botCommands b)
+        return ())
   where userMsg b u xs = T.hPutStr (botHandle b)  $ T.concat ["PRIVMSG ", u, " :", xs, "\n"]
 
 commandSource :: Command
@@ -80,7 +82,7 @@ commandMix =
         mix xs n b =
             action b $ T.concat [ "skillfully mixes "
                                 , T.intercalate ", " (init xs)
-                                , "and"
+                                , " and "
                                 , last xs
                                 , " and slides it to "
                                 , n
