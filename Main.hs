@@ -2,6 +2,8 @@
 
 module Main (main) where
 
+import Debug.Trace
+
 import Bot 
 import Data.Char
 import System.Random
@@ -36,8 +38,10 @@ commandHelp =
     "help"
     "show list of commands"
     (0, Just 0)
-    (\[] _ b -> 
-        mapM_ (privmsg b . (\(Command n d _ _) -> T.concat [n, " - ", d])) (botCommands b))
+    (\[] u b -> do
+        privmsg b "List of commands sent in a PM."
+        mapM_ (userMsg b u . (\(Command n d _ _) -> T.concat [n, " - ", d])) (M.elems $ botCommands b))
+  where userMsg b u xs = T.hPutStr (botHandle b)  $ T.concat ["PRIVMSG ", u, " :", xs, "\n"]
 
 commandSource :: Command
 commandSource = 
@@ -146,40 +150,40 @@ commandSend =
   Command
       "send"
       "send several things, such as help, and nudes"
-      (1, Just 1)
+      (1, Nothing)
       commSend
-  where commSend ["nudes"] u b = randomNude u >>= privmsg b . T.pack
+  where commSend ["nudes"] u b    = do
+            fileExists <- doesFileExist ("sexprefs/" ++ T.unpack u)
+            if fileExists
+              then do xs <- T.lines <$> T.readFile ("sexprefs/" ++ T.unpack u)
+                      randomNude xs >>= privmsg b . T.pack
+              else randomNude [] >>= privmsg b . T.pack
+        commSend ("nudes":xs) u b = randomNude xs >>= privmsg b . T.pack
         commSend [what] _ b 
             | what == "hugs" || what == "cuddles" = choice hugs >>= privmsg b
             where hugs = ["(>^_^)>", "<(^o^<)", "＼(^o^)／"]
         commSend _ _ b = privmsg b "I'm unfortunately too stupid to know how to send that. Blame it on my retarded creator."
         choice l = fmap (l !!) (randomRIO (0, length l - 1))
 
-randomNude :: T.Text -> IO String
-randomNude u = do
-    pageOne <- fmap (++"0") root
-    np      <- fromMaybe 0 <$> scrapeURL pageOne numPages
+randomNude :: [T.Text] -> IO String
+randomNude xs = do
+    np   <- fromMaybe 0 <$> scrapeURL (root ++ "0") numPages
     let n = if np `div` 42 > 50 then 50 * 42 else np
-    pageNum <- randomRIO (0, n) :: IO Int
-    page    <- fmap (++(show n)) root
-    xs      <- scrapeURL page images
+    page <- ((root++) . show) <$> (randomRIO (0, n) :: IO Int)
+    xs   <- trace page $ scrapeURL page images
     case xs of
       Nothing -> return "There aren't any images with your preferances."
       Just xs -> do if length xs == 0
                       then return "There aren't any images with your preferences."
                       else do img <- choice xs 
                               return $ "http://gelbooru.com/" ++ img
-  where root :: IO String 
-        root = do let gel :: String
-                      gel = "http://gelbooru.com/index.php?page=post&s=list\
-                            \&tags=rating%3aexplicit"
-                  fileExists <- doesFileExist ("sexprefs/" ++ T.unpack u)
-                  if | not fileExists -> return $ gel ++ "&pid="
-                     | otherwise      -> do
-                       xs <- T.lines <$> T.readFile ("sexprefs/" ++ T.unpack u)
-                       if length xs > 0 
-                         then return $ gel ++ "+" ++ T.unpack (T.intercalate "+" xs) ++ "&pid="
-                         else return $ gel ++ "&pid="
+  where root = case xs of
+                 [] -> "http://gelbooru.com/index.php?page=post&s=list\
+                       \&tags=rating%3aexplicit&pid="
+                 xs -> "http://gelbooru.com/index.php?page=post&s=list\
+                       \&tags=rating%3aexplicit+" 
+                       ++ T.unpack (T.intercalate "+" xs)
+                       ++ "&pid="
         choice x = fmap (x !!) (randomRIO (0, length x - 1))
         numPages = do
             x <- attr ("href" :: String) $ ("a" :: String) @: [("alt" :: String) @= "last page"]
@@ -313,6 +317,14 @@ command8ball =
                     , "Very doubtful."
                     ]
 
+commandSay :: Command
+commandSay =
+  Command
+    "say"
+    "make SushiBot say the thing"
+    (0, Nothing)
+    (\xs _ b -> privmsg b (T.unwords xs))
+      
 main :: IO ()
 main = 
   connectBot "irc.sushigirl.tokyo" 6667 "SushiBot" "SushiBot" "#lounge" False
@@ -334,6 +346,7 @@ main =
     , commandLewdBot 
     , commandWeebMedia
     , command8ball
+    , commandSay
     ]
 
     [ specialLove ]
