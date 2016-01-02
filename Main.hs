@@ -356,6 +356,7 @@ main =
     , commandWeebMedia
     , command8ball
     , commandSay
+    , commandAction
     ]
 
     [ specialLove ]
