@@ -10,7 +10,6 @@ import System.Random
 import System.Directory
 import Text.HTML.Scalpel
 import Data.Maybe (fromMaybe)
-import Database.SQLite.Simple
 import qualified Data.Map as M
 import qualified Data.Text as T
 import Control.Concurrent (forkIO)
@@ -326,6 +325,14 @@ commandSay =
     "make SushiBot say the thing"
     (0, Nothing)
     (\xs _ b -> privmsg b (T.unwords xs))
+
+commandAction :: Command
+commandAction = 
+  Command
+    "action"
+    "make SushiBot do the action"
+    (0, Nothing)
+    (\xs _ b -> action b (T.unwords xs))
       
 main :: IO ()
 main = 
