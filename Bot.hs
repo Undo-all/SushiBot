@@ -19,6 +19,23 @@ import qualified Data.Map as M
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 
+
+args tmp res _ []
+    | null tmp  = reverse res
+    | otherwise = reverse (reverse tmp:res)
+args tmp res True ('\\':'"':xs) = args ('"':tmp) res True xs
+args tmp res True ('"':xs)      = args [] (reverse tmp:res) False xs
+args tmp res True (c:xs)        = args (c:tmp) res True xs
+args tmp res False ('"':xs)
+    | null tmp  = args [] res True xs
+    | otherwise = args [] (reverse tmp:res) True xs
+args tmp res False (c:xs) 
+    | isSpace c =
+      if null tmp
+        then args [] res False xs 
+        else args [] (reverse tmp:res) False xs
+    | otherwise = args (c:tmp) res False xs
+
 data Command = Command 
                { commandName :: T.Text
                , commandDesc :: T.Text
@@ -82,12 +99,11 @@ handleData s h b
     | isMode         = T.hPutStr (botHandle b) (T.concat ["JOIN ", botChannel b, "\n"])
     | isEmpty        = return ()
     | isJust special = maybe (error "nope.") (\x -> specialFunc x (clean s) b) special
-    | isCommand s    = eval ((\(x:xs) -> T.tail x : xs) $ space $ T.words (clean s)) (username s) b
+    | isCommand s    = eval ((\(x:xs) -> T.tail x : xs) $ map T.pack $ args "" [] False (T.unpack $ clean s)) (username s) b
     | otherwise      = return ()
   where isCommand m = "PRIVMSG" `T.isInfixOf` m &&
                       T.head (clean m) == '!'
         clean       = T.tail . T.dropWhile (/= ':') . T.tail
-        space       = map (T.map (\x -> if x == '_' then ' ' else x))
         username    = T.takeWhile (/='!') . T.tail
         special     = find (($ s) . specialCond) (botSpecials b)
         isEmpty     = "PRIVMSG" `T.isInfixOf` s && T.all isSpace (clean s)
